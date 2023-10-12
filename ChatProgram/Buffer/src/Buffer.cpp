@@ -37,9 +37,11 @@ void Buffer::WriteMessage(Message& message)
 		case Message::Type::Ushort:
 			WriteUShort16BE( ((ushort16)message.messageData) );
 			break;
-		case Message::Type::string:
-			std::string* value = (std::string*) message.messageData;
-			WriteString( (*value) );
+		case Message::Type::String:
+			char* value = (char*) message.messageData;
+			std::string newStr(value);
+
+			WriteString(newStr);
 			break;
 	}
 }
@@ -58,9 +60,13 @@ Message Buffer::ReadMessage()
 	case Message::Type::Ushort:
 		message.messageData = (ushort16*) ReadUShort16BE();
 		break;
-	case Message::Type::string:
+	case Message::Type::String:
+		/*std::string value = ReadString();
+		message.messageData = (char*)value.c_str();*/
+
 		std::string value = ReadString();
-		message.messageData = (char*)value.c_str();
+		message.messageData = new char[value.length() + 1];
+		strcpy_s(static_cast<char*>(message.messageData), value.length() + 1, value.c_str());
 		break;
 	}
 

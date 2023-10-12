@@ -5,7 +5,7 @@ class Message
 public :
 	enum Type
 	{
-		string,
+		String,
 		Uint,
 		Ushort
 	};

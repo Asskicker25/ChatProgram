@@ -5,7 +5,7 @@ size_t Message::GetSize()
 {
 	switch (messageType)
 	{
-		case Type::string:
+		case Type::String:
 			return  ((std::string*)messageData)->length();
 			break;
 		case Type::Uint:

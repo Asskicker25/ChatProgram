@@ -19,6 +19,21 @@ int main()
 
 	std::cout << (uint32)message.messageData << std::endl;
 
+	std::string str;
+	str = "Hello World";
+
+	Message message1;
+	message1.messageType = Message::Type::String;
+
+	message1.messageData = (void*)str.c_str();
+
+	b1.WriteMessage(message1);
+
+	Message newMessage1 = b1.ReadMessage();
+
+	std::string newString((char*)newMessage1.messageData);
+
+	std::cout << newString << std::endl;
 
 	/*b1.WriteUInt32BE(500);
 	printf("Write Index: %d\n", b1.GetWriteIndex());
