@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include <Buffer.h>
 
 int main()
@@ -7,7 +8,19 @@ int main()
 	Buffer b2;
 	Buffer b3;
 
-	b1.WriteUInt32BE(500);
+	Message message;
+
+	message.messageType = Message::Type::Uint;
+	message.messageData = (uint32*)50;
+
+	b1.WriteMessage(message);
+
+	Message newMessage = b1.ReadMessage();
+
+	std::cout << (uint32)message.messageData << std::endl;
+
+
+	/*b1.WriteUInt32BE(500);
 	printf("Write Index: %d\n", b1.GetWriteIndex());
 
 	b2.WriteUShort16BE(50);
@@ -22,5 +35,5 @@ int main()
 	std::string hello = b3.ReadString();
 
 	printf("test500 : %d\ntest50 : %u\n", test500, test50);
-	printf("Hello: %s\n", hello.c_str());
+	printf("Hello: %s\n", hello.c_str());*/
 }

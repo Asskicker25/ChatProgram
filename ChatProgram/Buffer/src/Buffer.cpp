@@ -25,6 +25,48 @@ int Buffer::GetReadIndex()
 	return readIndex;
 }
 
+void Buffer::WriteMessage(Message& message)
+{
+	WriteUShort16BE((ushort16)message.messageType);
+
+	switch (message.messageType)
+	{
+		case Message::Type::Uint:
+			WriteUInt32BE( ((uint32)message.messageData) );
+			break;
+		case Message::Type::Ushort:
+			WriteUShort16BE( ((ushort16)message.messageData) );
+			break;
+		case Message::Type::string:
+			std::string* value = (std::string*) message.messageData;
+			WriteString( (*value) );
+			break;
+	}
+}
+
+Message Buffer::ReadMessage()
+{
+	Message message;
+
+	message.messageType = static_cast<Message::Type>(ReadUShort16BE());
+
+	switch (message.messageType)
+	{
+	case Message::Type::Uint:
+		message.messageData = (uint32*) ReadUInt32BE();
+		break;
+	case Message::Type::Ushort:
+		message.messageData = (ushort16*) ReadUShort16BE();
+		break;
+	case Message::Type::string:
+		std::string value = ReadString();
+		message.messageData = (char*)value.c_str();
+		break;
+	}
+
+	return message;
+}
+
 void Buffer::WriteUInt32BE(uint32 value)
 {
 	if (writeIndex + 4 > bufferData.size())

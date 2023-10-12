@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 
+#include "Message.h"
+
 typedef unsigned int uint32;
 typedef unsigned short ushort16;
 typedef unsigned char uint8;
@@ -23,6 +25,9 @@ public:
 	void GrowSize(size_t newSize);
 	int GetWriteIndex();
 	int GetReadIndex();
+
+	void WriteMessage(Message& message);
+	Message ReadMessage();
 
 	void WriteUInt32BE(uint32 value);
 	uint32 ReadUInt32BE();

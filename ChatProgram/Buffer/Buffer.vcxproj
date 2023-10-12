@@ -19,9 +19,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Message.cpp" />
     <ClCompile Include="src\Buffer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Message.h" />
     <ClInclude Include="src\Buffer.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
