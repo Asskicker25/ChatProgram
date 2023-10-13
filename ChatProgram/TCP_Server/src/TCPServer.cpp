@@ -14,6 +14,10 @@
 #include <thread>
 #include<Message.h>
 #include<Buffer.h>
+#include <conio.h>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -28,19 +32,45 @@
 //Send message to client socket
 //Cleanup
 
+struct Client
+{
+	std::string clientName;
+	SOCKET clientSocket;
+	bool terminateThread;
+};
+
+struct ClientMessage
+{
+	Client* client;
+	Message message;
+};
+
+
 Events cleanupEvents;
 
-std::vector<SOCKET> clientList;
+std::mutex clientListMtx;
+std::mutex messageQueueMutex;
+
+std::condition_variable condition;
+
+std::vector<Client*> clientList;
 std::vector <std::thread> clientThreads;
+std::queue<ClientMessage> clientMessages; 
+//std::vector<ClientMessage> clientJoinedMessages; 
 
 SOCKET listenSocket;
+
+bool serverInitialized = false;
 
 struct addrinfo* info = nullptr;
 struct addrinfo hints;
 
 void FreeAddressInfo();
 void CloseSocket();
-void HandleClient(SOCKET clientSocket);
+void AddNewClient();
+void HandleRecvClient(Client* client);
+void HandleSendClient();
+void AddMessageToQueue(const ClientMessage& clientMessage);
 
 
 int main(int argc, char** argv)
@@ -57,6 +87,7 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
+	serverInitialized = true;
 	std::cout << "Winsock Initialized Successfully" << std::endl;
 
 
@@ -111,21 +142,26 @@ int main(int argc, char** argv)
 
 	std::cout << "Listening socket successfull " << std::endl;
 
+	std::cout << std::endl;
+	std::cout << "************************************" << std::endl;
+	std::cout << std::endl;
+
+	std::thread addClientThread([]()
+		{
+			AddNewClient();
+		});
+
+	addClientThread.detach();
+
+	std::thread sendMessagesToClient([]()
+		{
+			HandleSendClient();
+		});
+
+	sendMessagesToClient.detach();
+
 	while (true)
 	{
-		SOCKET newClientSocket = accept(listenSocket, NULL, NULL);
-
-		if (newClientSocket != INVALID_SOCKET)
-		{
-			std::thread newClientThread([newClientSocket]() {
-				HandleClient(newClientSocket);
-				});
-
-			newClientThread.detach();
-			clientList.push_back(newClientSocket);
-			clientThreads.push_back(std::move(newClientThread));
-		}
-
 	}
 
 	cleanupEvents.Invoke();
@@ -143,53 +179,157 @@ void CloseSocket()
 	closesocket(listenSocket);
 }
 
-void HandleClient(SOCKET clientSocket)
+void AddMessageToQueue(const ClientMessage& clientMessage)
 {
-	std::cout << "New Client Connected" << std::endl;
-	int result;
+	std::unique_lock<std::mutex> lock(messageQueueMutex);
+	clientMessages.push(clientMessage);
+}
+
+
+void AddNewClient()
+{
+	while (true)
+	{
+		SOCKET newClientSocket = accept(listenSocket, NULL, NULL);
+
+		if (newClientSocket != INVALID_SOCKET)
+		{
+			Client* newClient = new Client();
+			newClient->clientSocket = newClientSocket;
+
+			std::thread newClientThread([newClient]() {
+				HandleRecvClient(newClient);
+				});
+
+			newClientThread.detach();
+
+			std::unique_lock<std::mutex> lock(clientListMtx);
+
+			clientList.push_back(newClient);
+			clientThreads.push_back(std::move(newClientThread));
+		}
+	}
+
+	std::cout << "Thread Closed" << std::endl;
+	condition.notify_all();
+}
+
+void HandleRecvClient(Client* client)
+{
+	int result, error;
+
+	while (!client->terminateThread)
+	{
+		Buffer clientBuffer(512);
+
+		//recv
+		result = recv(client->clientSocket, clientBuffer.GetBufferData(), clientBuffer.GetBufferSize(), 0);
+		if (result == SOCKET_ERROR)
+		{
+			error = WSAGetLastError();
+
+			if (error == WSAECONNRESET || error == ECONNRESET)
+			{
+				printf("%s has disconnected from the room\n", client->clientName.c_str());
+
+				client->terminateThread = true;
+				closesocket(client->clientSocket);
+
+				std::unique_lock<std::mutex> lock(clientListMtx);
+				clientList.erase(std::remove(clientList.begin(), clientList.end(), client), clientList.end());
+			}
+			else
+			{
+				std::cout << "Receiving message from Client failed with error : " << WSAGetLastError() << std::endl;
+			}
+		}
+		else
+		{
+			Message message = clientBuffer.ReadMessage();
+			ClientMessage clientMessage;
+
+			if (message.commandType == Message::CommandType::SetName)
+			{
+				client->clientName = message.GetMessageDataString();
+
+				Message sendMessage;
+
+				sendMessage.commandType = Message::CommandType::Chat;
+				sendMessage.messageType = Message::Type::String;
+
+				std::string newStr(client->clientName + " has connect to the room");
+
+				sendMessage.SetMessageDataString(newStr);
+
+				//std::cout << "Added To Queue : " << sendMessage.GetMessageDataString() << std::endl;
+
+				clientMessage.message = sendMessage;
+				clientMessage.client = client;
+
+				AddMessageToQueue(clientMessage);
+
+				printf("%s has connected to the room\n", client->clientName.c_str());
+			}
+			else if (message.commandType == Message::CommandType::Chat)
+			{
+				std::string newStr("[" + client->clientName + "] : " + message.GetMessageDataString());
+
+				std::cout << newStr << std::endl;
+
+				Message sendMessage;
+
+				sendMessage.commandType = Message::CommandType::Chat;
+				sendMessage.messageType = Message::Type::String;
+				sendMessage.SetMessageDataString(newStr);
+
+				clientMessage.message = sendMessage;
+				clientMessage.client = client;
+
+				AddMessageToQueue(clientMessage);
+			}
+			//system("Pause");
+		}
+	}
+
+	delete client;
+
+}
+
+void HandleSendClient()
+{
+	int result, error;
 
 	while (true)
 	{
-		Buffer clientBuffer(512);
-		//recv
-		result = recv(clientSocket, clientBuffer.GetBufferData(), clientBuffer.GetBufferSize(), 0);
-		if (result == SOCKET_ERROR)
+		std::unique_lock<std::mutex> lock(messageQueueMutex);
+		if(!clientMessages.empty())
 		{
-			std::cout << "Receiving message from Client failed with error : " << WSAGetLastError() << std::endl;
+			ClientMessage message = clientMessages.front();
+			clientMessages.pop();
+
+			Buffer sendBuffer;
+			
+			sendBuffer.WriteMessage(message.message);
+
+			std::unique_lock<std::mutex> lock(clientListMtx);
+
+			for (int i = 0; i < clientList.size(); i++)
+			{
+				if (clientList[i]->clientName == message.client->clientName)
+				{
+					continue;
+				}
+
+				result = send(clientList[i]->clientSocket, sendBuffer.GetBufferData(), sendBuffer.GetBufferSize(), 0);
+				if (result == SOCKET_ERROR)
+				{
+					std::cout << "Sending message to Client failed with error : " << WSAGetLastError() << std::endl;
+				}
+			}
+
+			
 		}
-
-		Message clientMessage = clientBuffer.ReadMessage();
-
-		//std::cout << "" << (uint32)clientMessage.messageData << std::endl;
-
-		clientMessage.commandType = Message::CommandType::SetName;
-
-		if (clientMessage.commandType == Message::CommandType::SetName)
-		{
-			std::string newString((char*)clientMessage.messageData);
-			std::cout << "" << newString << std::endl;
-		}
-		else if (clientMessage.commandType == Message::CommandType::Chat)
-		{
-		}
-
-		system("Pause");
-
-		/*switch (clientMessage.commandType)
-		{
-		case Message::CommandType::SetName:
-			std::string newString((char*)clientMessage.messageData);
-			std::cout << "" << newString << std::endl;
-			break;
-		case Message::CommandType::Chat:
-
-			break;
-		}*/
 	}
-
 }
 
-void Send()
-{
 
-}

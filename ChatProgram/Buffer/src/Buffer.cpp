@@ -40,6 +40,7 @@ void Buffer::WriteMessage(Message& message)
 	writeIndex = 0;
 
 	WriteUShort16BE((ushort16)message.messageType);
+	WriteUShort16BE((ushort16)message.commandType);
 
 	switch (message.messageType)
 	{
@@ -50,10 +51,9 @@ void Buffer::WriteMessage(Message& message)
 			WriteUShort16BE( ((ushort16)message.messageData) );
 			break;
 		case Message::Type::String:
-			char* value = (char*) message.messageData;
-			std::string newStr(value);
-
-			WriteString(newStr);
+			/*char* value = (char*) message.messageData;
+			std::string newStr(value);*/
+			WriteString(message.GetMessageDataString());
 			break;
 	}
 }
@@ -65,6 +65,7 @@ Message Buffer::ReadMessage()
 	Message message;
 
 	message.messageType = static_cast<Message::Type>(ReadUShort16BE());
+	message.commandType = static_cast<Message::CommandType>(ReadUShort16BE());
 
 	switch (message.messageType)
 	{
@@ -89,9 +90,9 @@ Message Buffer::ReadMessage()
 
 void Buffer::WriteUInt32BE(uint32 value)
 {
-	if (writeIndex + 4 > bufferData.size())
+	if (writeIndex + sizeof(uint32) > bufferData.size())
 	{
-		GrowSize(4);
+		GrowSize(sizeof(uint32));
 	}
 
 	bufferData[writeIndex]		= value >> 24;
@@ -118,9 +119,9 @@ uint32 Buffer::ReadUInt32BE()
 
 void Buffer::WriteUShort16BE(ushort16 value)
 {
-	if (writeIndex + 2 > bufferData.size())
+	if (writeIndex + sizeof(ushort16) > bufferData.size())
 	{
-		GrowSize(2);
+		GrowSize(sizeof(ushort16));
 	}
 
 	bufferData[writeIndex]		= value >> 8;
@@ -143,9 +144,14 @@ ushort16 Buffer::ReadUShort16BE()
 
 void Buffer::WriteString(std::string value)
 {
-	if (writeIndex + value.length() + 4 + 2 > bufferData.size())
+	size_t sizeRequired = 2			//message type size
+						+ 2			//command type size
+						+ sizeof(uint32) 
+						+ value.length();
+
+	if (writeIndex + sizeRequired > bufferData.size())
 	{
-		GrowSize(6 + value.length());
+		GrowSize(sizeRequired);
 	}
 
 	WriteUInt32BE(static_cast<uint32>(value.length()));
