@@ -29,19 +29,19 @@
 Events cleanupEvents;
 
 std::vector<SOCKET> clientList;
+std::vector <std::thread> clientThreads;
 
 SOCKET listenSocket;
-SOCKET newClientSocket;
 
 struct addrinfo* info = nullptr;
 struct addrinfo hints;
 
 void FreeAddressInfo();
 void CloseSocket();
-void AddNewClientSocket();
+void AddNewClientSocket(SOCKET clientSocket);
 
 
-int main(int arg, char** argv)
+int main(int argc, char** argv)
 {
 
 	WSAData wsaData;
@@ -75,7 +75,7 @@ int main(int arg, char** argv)
 
 	std::cout << "Address fetched Successfully" << std::endl;
 
-	
+
 	listenSocket = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
 	if (listenSocket == INVALID_SOCKET)
 	{
@@ -109,11 +109,21 @@ int main(int arg, char** argv)
 
 	std::cout << "Listening socket successfull " << std::endl;
 
-	std::thread addNewClients(AddNewClientSocket);
-
 	while (true)
 	{
+		SOCKET newClientSocket = accept(listenSocket, NULL, NULL);
+		if (newClientSocket != INVALID_SOCKET)
+		{
+			std::thread newClientThread([newClientSocket]() {
+				AddNewClientSocket(newClientSocket);
+				});
+
+			newClientThread.detach();
+			clientThreads.push_back(std::move(newClientThread));
+		}
 	}
+
+	cleanupEvents.Invoke();
 
 	return 0;
 }
@@ -128,14 +138,7 @@ void CloseSocket()
 	closesocket(listenSocket);
 }
 
-void AddNewClientSocket()
+void AddNewClientSocket(SOCKET clientSocket)
 {
-	newClientSocket = accept(listenSocket, NULL, NULL);
-
-	if (newClientSocket == INVALID_SOCKET)
-	{
-		cleanupEvents.Invoke();
-	}
-
-	std::cout << "New Client Added" << std::endl;
+	std::cout << "New Client Connected" << std::endl;
 }
