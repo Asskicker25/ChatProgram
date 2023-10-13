@@ -10,6 +10,11 @@ Buffer::~Buffer()
 	bufferData.clear();
 }
 
+char* Buffer::GetBufferData()
+{
+	return (char*)&bufferData[0];
+}
+
 void Buffer::GrowSize(size_t icreaseBy)
 {
 	bufferData.resize(bufferData.size() + icreaseBy, 0);
@@ -25,8 +30,15 @@ int Buffer::GetReadIndex()
 	return readIndex;
 }
 
+size_t Buffer::GetBufferSize()
+{
+	return bufferData.size();
+}
+
 void Buffer::WriteMessage(Message& message)
 {
+	writeIndex = 0;
+
 	WriteUShort16BE((ushort16)message.messageType);
 
 	switch (message.messageType)
@@ -48,6 +60,8 @@ void Buffer::WriteMessage(Message& message)
 
 Message Buffer::ReadMessage()
 {
+	readIndex = 0;
+
 	Message message;
 
 	message.messageType = static_cast<Message::Type>(ReadUShort16BE());
@@ -129,9 +143,9 @@ ushort16 Buffer::ReadUShort16BE()
 
 void Buffer::WriteString(std::string value)
 {
-	if (writeIndex + value.length() > bufferData.size())
+	if (writeIndex + value.length() + 4 + 2 > bufferData.size())
 	{
-		GrowSize(4 + value.length());
+		GrowSize(6 + value.length());
 	}
 
 	WriteUInt32BE(static_cast<uint32>(value.length()));

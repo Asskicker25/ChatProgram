@@ -12,6 +12,8 @@
 #include <iostream>
 #include <Events.h>
 #include <thread>
+#include <Buffer.h>
+#include <Message.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -87,11 +89,37 @@ int main(int argc, char** argv)
 		cleanupEvents.Invoke();
 		return -1;
 	}
+
 	std::cout << "Connecting to Server Successfully : " << std::endl;
 
+	Buffer clientNameBuffer;
+
+	Message clientNameMessage;
+	clientNameMessage.commandType = Message::CommandType::SetName;
+	clientNameMessage.messageType = Message::Type::String;
+	std::string name = "Rajesh";
+	clientNameMessage.messageData = (char*)name.c_str();
+	//clientNameMessage.messageData = (uint32*)50;
+
+	clientNameBuffer.WriteMessage(clientNameMessage);
+
+	result = send(serverSocket, clientNameBuffer.GetBufferData(), clientNameBuffer.GetBufferSize(), 0);
+	if (result == SOCKET_ERROR)
+	{
+		std::cout << "Sending Name to Server failed with error : " << WSAGetLastError() << std::endl;
+		cleanupEvents.Invoke();
+	}
+
+	Message clientNameMessage1 = clientNameBuffer.ReadMessage();
+
+	std::string newStr((char*)clientNameMessage1.messageData);
+	std::cout << "Message sent to Server Successfully : " << newStr << std::endl;
+	//std::cout << "Message sent to Server Successfully : " << (uint32)clientNameMessage1.messageData << std::endl;
 
 	while (true)
 	{
+		
+		system("Pause");
 	}
 
 	system("Pause");

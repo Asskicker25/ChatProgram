@@ -12,6 +12,8 @@
 #include <iostream>
 #include <Events.h>
 #include <thread>
+#include<Message.h>
+#include<Buffer.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -38,7 +40,7 @@ struct addrinfo hints;
 
 void FreeAddressInfo();
 void CloseSocket();
-void AddNewClientSocket(SOCKET clientSocket);
+void HandleClient(SOCKET clientSocket);
 
 
 int main(int argc, char** argv)
@@ -112,15 +114,18 @@ int main(int argc, char** argv)
 	while (true)
 	{
 		SOCKET newClientSocket = accept(listenSocket, NULL, NULL);
+
 		if (newClientSocket != INVALID_SOCKET)
 		{
 			std::thread newClientThread([newClientSocket]() {
-				AddNewClientSocket(newClientSocket);
+				HandleClient(newClientSocket);
 				});
 
 			newClientThread.detach();
+			clientList.push_back(newClientSocket);
 			clientThreads.push_back(std::move(newClientThread));
 		}
+
 	}
 
 	cleanupEvents.Invoke();
@@ -138,7 +143,53 @@ void CloseSocket()
 	closesocket(listenSocket);
 }
 
-void AddNewClientSocket(SOCKET clientSocket)
+void HandleClient(SOCKET clientSocket)
 {
 	std::cout << "New Client Connected" << std::endl;
+	int result;
+
+	while (true)
+	{
+		Buffer clientBuffer(512);
+		//recv
+		result = recv(clientSocket, clientBuffer.GetBufferData(), clientBuffer.GetBufferSize(), 0);
+		if (result == SOCKET_ERROR)
+		{
+			std::cout << "Receiving message from Client failed with error : " << WSAGetLastError() << std::endl;
+		}
+
+		Message clientMessage = clientBuffer.ReadMessage();
+
+		//std::cout << "" << (uint32)clientMessage.messageData << std::endl;
+
+		clientMessage.commandType = Message::CommandType::SetName;
+
+		if (clientMessage.commandType == Message::CommandType::SetName)
+		{
+			std::string newString((char*)clientMessage.messageData);
+			std::cout << "" << newString << std::endl;
+		}
+		else if (clientMessage.commandType == Message::CommandType::Chat)
+		{
+		}
+
+		system("Pause");
+
+		/*switch (clientMessage.commandType)
+		{
+		case Message::CommandType::SetName:
+			std::string newString((char*)clientMessage.messageData);
+			std::cout << "" << newString << std::endl;
+			break;
+		case Message::CommandType::Chat:
+
+			break;
+		}*/
+	}
+
+}
+
+void Send()
+{
+
 }

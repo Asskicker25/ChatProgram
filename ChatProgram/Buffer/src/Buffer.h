@@ -13,18 +13,23 @@ typedef unsigned char uint8;
 class Buffer
 {
 private:
-
 	std::vector<uint8> bufferData;
+
 	int readIndex = 0;
 	int writeIndex = 0;
 
 public:
+
 	Buffer(size_t size = 10);
 	~Buffer();
+
+	char* GetBufferData();
 
 	void GrowSize(size_t newSize);
 	int GetWriteIndex();
 	int GetReadIndex();
+
+	size_t GetBufferSize();
 
 	void WriteMessage(Message& message);
 	Message ReadMessage();

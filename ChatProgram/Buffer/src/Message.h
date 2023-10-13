@@ -10,6 +10,13 @@ public :
 		Ushort
 	};
 
+	enum CommandType
+	{
+		Chat,
+		SetName
+	};
+	
+	CommandType commandType;
 	Type messageType;
 	void* messageData;
 
