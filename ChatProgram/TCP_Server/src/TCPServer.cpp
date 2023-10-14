@@ -274,18 +274,18 @@ void HandleRecvClient(Client* client)
 			{
 				std::string newStr("[" + client->clientName + "] : " + message.GetMessageDataString());
 
-				std::cout << newStr << std::endl;
-
 				Message sendMessage;
 
 				sendMessage.commandType = Message::CommandType::Chat;
 				sendMessage.messageType = Message::Type::String;
+
 				sendMessage.SetMessageDataString(newStr);
 
 				clientMessage.message = sendMessage;
 				clientMessage.client = client;
 
 				AddMessageToQueue(clientMessage);
+				std::cout << std::string (newStr)  << std::endl;
 			}
 			//system("Pause");
 		}
