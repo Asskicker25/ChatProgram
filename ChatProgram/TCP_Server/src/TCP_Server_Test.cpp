@@ -285,7 +285,7 @@ void HandleRecvClient(Client* client)
 				clientMessage.client = client;
 
 				AddMessageToQueue(clientMessage);
-				std::cout << std::string (newStr)  << std::endl;
+				std::cout << newStr  << std::endl;
 			}
 			//system("Pause");
 		}

@@ -36,7 +36,7 @@
     <ClCompile Include="extern\imgui\imgui_widgets.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\TCPServer.cpp">
+    <ClCompile Include="src\TCP_Server.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

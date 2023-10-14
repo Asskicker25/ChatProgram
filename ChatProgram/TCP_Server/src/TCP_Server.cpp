@@ -293,6 +293,7 @@ void DrawImguiWindow(bool window, ImVec4 clearColor, ImGuiIO io, int windowWidth
 	ImGui::BeginChild("ChatMessages", ImVec2(0, windowHeight - (windowHeight/5)), true);
 	// Loop through chat messages and display them here
 	for (const std::string& message : chatMessages) {
+		//ImGui::TextUnformatted(message.c_str());
 		ImGui::TextWrapped(message.c_str());
 	}
 	ImGui::EndChild();
@@ -309,7 +310,7 @@ void DrawImguiWindow(bool window, ImVec4 clearColor, ImGuiIO io, int windowWidth
 
 void AddMessageToQueue(const ClientMessage& clientMessage)
 {
-	std::unique_lock<std::mutex> lock(messageQueueMutex);
+	//std::unique_lock<std::mutex> lock(messageQueueMutex);
 	clientMessages.push(clientMessage);
 }
 
@@ -330,7 +331,7 @@ void AddNewClient()
 
 			newClientThread.detach();
 
-			std::unique_lock<std::mutex> lock(clientListMtx);
+			//std::unique_lock<std::mutex> lock(clientListMtx);
 
 			clientList.push_back(newClient);
 			clientThreads.push_back(std::move(newClientThread));
@@ -366,7 +367,7 @@ void HandleRecvClient(Client* client)
 				client->terminateThread = true;
 				closesocket(client->clientSocket);
 
-				std::unique_lock<std::mutex> lock(clientListMtx);
+				//std::unique_lock<std::mutex> lock(clientListMtx);
 				clientList.erase(std::remove(clientList.begin(), clientList.end(), client), clientList.end());
 			}
 			else
@@ -400,7 +401,9 @@ void HandleRecvClient(Client* client)
 
 				AddMessageToQueue(clientMessage);
 
+				//std::string addString(client->clientName);
 				AddMessageToGui(client->clientName + " has connected to the room");
+				std::this_thread::sleep_for(std::chrono::milliseconds(500));
 				//printf("%s has connected to the room\n", client->clientName.c_str());
 			}
 			else if (message.commandType == Message::CommandType::Chat)
@@ -420,8 +423,9 @@ void HandleRecvClient(Client* client)
 
 				AddMessageToQueue(clientMessage);
 
-				//AddMessageToGui(newStr);
-				std::cout << newStr << std::endl;
+				AddMessageToGui(newStr);
+				std::this_thread::sleep_for(std::chrono::milliseconds(500));
+				//std::cout << "\n ";
 			}
 			//system("Pause");
 		}
@@ -437,7 +441,7 @@ void HandleSendClient()
 
 	while (true)
 	{
-		std::unique_lock<std::mutex> lock(messageQueueMutex);
+		//std::unique_lock<std::mutex> lock(messageQueueMutex);
 		if (!clientMessages.empty())
 		{
 			ClientMessage message = clientMessages.front();
@@ -447,7 +451,7 @@ void HandleSendClient()
 
 			sendBuffer.WriteMessage(message.message);
 
-			std::unique_lock<std::mutex> lock(clientListMtx);
+			//std::unique_lock<std::mutex> lock(clientListMtx);
 
 			for (int i = 0; i < clientList.size(); i++)
 			{
@@ -463,9 +467,9 @@ void HandleSendClient()
 					std::cout << "Sending message to Client failed with error : " << WSAGetLastError() << std::endl;
 				}
 			}
-
-
 		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	}
 }
 

@@ -36,6 +36,8 @@ bool serverConnected = false;
 
 std::mutex serverMtx;
 
+
+
 struct addrinfo* info = nullptr;
 struct addrinfo hints;
 
@@ -44,6 +46,7 @@ void CloseSocket();
 
 void HandleRecvServer();
 void HandleSendServer();
+
 
 int main(int argc, char** argv)
 {
@@ -61,11 +64,12 @@ int main(int argc, char** argv)
 	result = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (result != 0)
 	{
-		std::cout << "Winsock initialization failed with error : " << result << std::endl;
+		AddMessageToGui("Winsock Initialization failed with error" + result);
+		//std::cout << "Winsock initialization failed with error : " << result << std::endl;
 		return -1;
 	}
-
-	std::cout << "Winsock Initialized Successfully" << std::endl;
+	AddMessageToGui("Winsock Initialized Successfully");
+	//std::cout << "Winsock Initialized Successfully" << std::endl;
 
 
 	ZeroMemory(&hints, sizeof(hints));
@@ -78,26 +82,30 @@ int main(int argc, char** argv)
 	result = getaddrinfo("localHost", DEFAULT_PORT, &hints, &info);
 	if (result != 0)
 	{
-		std::cout << "Getting Address failed with error : " << result << std::endl;
+		AddMessageToGui("Getting Address failed with error : " + result);
+		//std::cout << "Getting Address failed with error : " << result << std::endl;
 		cleanupEvents.Addfunction("WSACleanup", WSACleanup);
 		cleanupEvents.Invoke();
 		return -1;
 	}
+	AddMessageToGui("Address fetched Successfully");
 
-	std::cout << "Address fetched Successfully" << std::endl;
+	//std::cout << "Address fetched Successfully" << std::endl;
 
 
 	//Creating Socket
 	serverSocket = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
 	if (serverSocket == INVALID_SOCKET)
 	{
-		std::cout << "Socket creation failed with error : " << WSAGetLastError() << std::endl;
+		AddMessageToGui("Socket creation failed with error : " + WSAGetLastError());
+		//std::cout << "Socket creation failed with error : " << WSAGetLastError() << std::endl;
 		cleanupEvents.Addfunction("Free Address", FreeAddressInfo);
 		cleanupEvents.Invoke();
 		return -1;
 	}
 
-	std::cout << "Socket created Successfully" << std::endl;
+	AddMessageToGui("Address fetched Successfully");
+	//std::cout << "Address fetched Successfully" << std::endl;
 
 
 
@@ -105,14 +113,16 @@ int main(int argc, char** argv)
 	result = connect(serverSocket, info->ai_addr, (int)info->ai_addrlen);
 	if (result == INVALID_SOCKET)
 	{
-		std::cout << "Connecting to Server failed with error : " << WSAGetLastError() << std::endl;
+		AddMessageToGui("Connecting to Server failed with error : " + WSAGetLastError());
+		//std::cout << "Connecting to Server failed with error : " << WSAGetLastError() << std::endl;
 		cleanupEvents.Addfunction("Close Socket", CloseSocket);
 		cleanupEvents.Invoke();
 		return -1;
 	}
 
 	serverConnected = true;
-	std::cout << "Connected to Server Successfully" << std::endl;
+	AddMessageToGui("Connected to Server Successfully");
+	//std::cout << "Connected to Server Successfully" << std::endl;
 
 	//Creating a buffer to send when connected
 	Buffer clientNameBuffer;
@@ -131,13 +141,15 @@ int main(int argc, char** argv)
 	result = send(serverSocket, clientNameBuffer.GetBufferData(), clientNameBuffer.GetBufferSize(), 0);
 	if (result == SOCKET_ERROR)
 	{
-		std::cout << "Sending Name to Server failed with error : " << WSAGetLastError() << std::endl;
+		AddMessageToGui("Sending Name to Server failed with error : " + WSAGetLastError());
+		//std::cout << "Sending Name to Server failed with error : " << WSAGetLastError() << std::endl;
 		cleanupEvents.Invoke();
 	}
 
 	//std::string newStr((char*)clientNameMessage1.messageData);
 	//std::cout << "Client name sent to Server Successfully : " << clientNameMessage1.GetMessageDataString() << std::endl;
-	std::cout << "Client name sent to Server Successfully" << std::endl << std::endl;
+	AddMessageToGui("Client name sent to Server Successfully");
+	//std::cout << "Client name sent to Server Successfully" << std::endl << std::endl;
 	//std::cout << "Message sent to Server Successfully : " << (uint32)clientNameMessage1.messageData << std::endl;
 
 	std::thread serverRecvThread([]()
@@ -184,16 +196,18 @@ void HandleRecvServer()
 
 			if (error == WSAECONNRESET || error == ECONNRESET)
 			{
-				std::cout << "Lost Connection to Server" << std::endl;
+				AddMessageToGui("Lost Connection to Server");
+				//std::cout << "Lost Connection to Server" << std::endl;
 
-				std::unique_lock<std::mutex> lock(serverMtx);
+				//std::unique_lock<std::mutex> lock(serverMtx);
 				serverConnected = false;
 
 				cleanupEvents.Invoke();
 			}
 			else
 			{
-				std::cout << "Receiving message from server failed with error : " << WSAGetLastError() << std::endl;
+				AddMessageToGui("Receiving message from server failed with error : " + WSAGetLastError());
+				//std::cout << "Receiving message from server failed with error : " << WSAGetLastError() << std::endl;
 			}
 
 		}
@@ -240,7 +254,8 @@ void HandleSendServer()
 
 			if (error == WSAECONNRESET || error == ECONNRESET)
 			{
-				std::cout << "Lost Connection to Server" << std::endl;
+				AddMessageToGui("Lost Connection to Server");
+				//std::cout << "Lost Connection to Server" << std::endl;
 
 				//std::unique_lock<std::mutex> lock(serverMtx);
 				serverConnected = false;
@@ -248,13 +263,15 @@ void HandleSendServer()
 			}
 			else
 			{
-				std::cout << "Sending Message to Server failed with error : " << WSAGetLastError() << std::endl;
+				AddMessageToGui("Sending Message to Server failed with error : " + WSAGetLastError());
+				//std::cout << "Sending Message to Server failed with error : " << WSAGetLastError() << std::endl;
 			}
 
 			
 		}
 	}
 }
+
 
 void FreeAddressInfo()
 {

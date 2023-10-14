@@ -26,7 +26,7 @@
     <ClCompile Include="extern\imgui\imgui_stdlib.cpp" />
     <ClCompile Include="extern\imgui\imgui_tables.cpp" />
     <ClCompile Include="extern\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="src\TCPServer.cpp" />
+    <ClCompile Include="src\TCP_Server.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="extern\imgui\imconfig.h" />
