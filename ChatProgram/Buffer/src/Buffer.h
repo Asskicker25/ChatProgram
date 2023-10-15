@@ -20,12 +20,15 @@ private:
 
 public:
 
-	Buffer(size_t size = 10);
+	Buffer(size_t size = 0);
 	~Buffer();
 
 	size_t HandlePacketSize(Message& message);
 
 	char* GetBufferData();
+	std::vector<uint8> GetBufferDataVector();
+
+	void AddBufferData(std::vector<uint8> addBufferData, int begin, int end);
 
 	void GrowSize(size_t newSize);
 	int GetWriteIndex();

@@ -15,9 +15,14 @@ char* Buffer::GetBufferData()
 	return (char*)&bufferData[0];
 }
 
-void Buffer::GrowSize(size_t icreaseBy)
+std::vector<uint8> Buffer::GetBufferDataVector()
 {
-	bufferData.resize(bufferData.size() + icreaseBy, 0);
+	return bufferData;
+}
+
+void Buffer::GrowSize(size_t newSize)
+{
+	bufferData.resize(newSize, 0);
 }
 
 int Buffer::GetWriteIndex()
@@ -33,6 +38,11 @@ int Buffer::GetReadIndex()
 size_t Buffer::GetBufferSize()
 {
 	return bufferData.size();
+}
+
+void Buffer::AddBufferData(std::vector<uint8> addBufferData, int begin, int end)
+{
+	bufferData.insert(bufferData.end(), addBufferData.begin() + begin, addBufferData.begin() + end + 1);
 }
 
 size_t Buffer::HandlePacketSize(Message& message)

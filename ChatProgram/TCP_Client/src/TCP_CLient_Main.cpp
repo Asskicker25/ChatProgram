@@ -21,6 +21,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <queue>
+#include <sstream>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -50,6 +51,7 @@ void GetKeyboardCallback(GLFWwindow* window, int key, int scancode, int action, 
 int screenWidth{ 800 };
 int screenHeight{ 600 };
 int currentRoomIndex = 0;
+int prevMessagesCount = 0;
 
 Events cleanupEvents;
 
@@ -89,6 +91,7 @@ void ChangeToNextRoomId();
 void AddMessageToGui(const std::string& message);
 void AddMessageToQueue(const ClientMessage& clientMessage);
 void AddChatToQueue(std::string message, std::string roomId);
+void SendConnectedToRoom();
 std::string GetCurrentRoomID();
 bool RoomIdExists(std::string roomId);
 
@@ -265,35 +268,7 @@ void ConnectToServer()
 	AddMessageToGui("Connected to Server Successfully");
 	//std::cout << "Connected to Server Successfully" << std::endl;
 
-	//Creating a buffer to send when connected
-	Buffer clientNameBuffer;
-
-	Message clientNameMessage;
-	clientNameMessage.commandType = Message::CommandType::SetName;
-	clientNameMessage.messageType = Message::Type::String;
-	clientNameMessage.roomID = GetCurrentRoomID();
-	clientNameMessage.SetMessageDataString(clientName);
-	//std::string str = "Surya";
-	//clientNameMessage.SetMessageDataString(str);
-	//clientNameMessage.messageData = (uint32*)50;
-
-	clientNameBuffer.WriteMessage(clientNameMessage);
-
-	//Sending client name when connected
-	result = send(serverSocket, clientNameBuffer.GetBufferData(), clientNameBuffer.GetBufferSize(), 0);
-	if (result == SOCKET_ERROR)
-	{
-		AddMessageToGui("Sending Name to Server failed with error : " + WSAGetLastError());
-		//std::cout << "Sending Name to Server failed with error : " << WSAGetLastError() << std::endl;
-		cleanupEvents.Invoke();
-	}
-
-	//std::string newStr((char*)clientNameMessage1.messageData);
-	//std::cout << "Client name sent to Server Successfully : " << clientNameMessage1.GetMessageDataString() << std::endl;
-	AddMessageToGui("Client name sent to Server Successfully");
-	//std::cout << "Client name sent to Server Successfully" << std::endl << std::endl;
-	//std::cout << "Message sent to Server Successfully : " << (uint32)clientNameMessage1.messageData << std::endl;
-
+	
 	std::thread serverRecvThread([]()
 		{
 			HandleRecvServer();
@@ -316,8 +291,25 @@ void DrawImguiWindow(WindowState& windowState, ImVec4 clearColor, ImGuiIO io, in
 	ImGui::SetNextWindowSize(ImVec2(windowWidth, windowHeight));
 	ImGui::SetNextWindowPos(ImVec2((screenWidth / 2) - windowWidth / 2, (screenHeight / 2) - windowHeight / 2));
 
-	std::string windowHeader("TCP Client : " + clientName);
-	ImGui::Begin(windowHeader.c_str());
+	std::stringstream ss;
+	ss << "TCP Client";
+
+	if (clientName != "")
+	{
+		ss << " : " << clientName;
+	}
+
+	if (roomID.size() > 0)
+	{
+		ss << "   Rooms : ";
+
+		for (int i = 0; i < roomID.size(); i++)
+		{
+			ss<<"[" << roomID[i] << "]";
+		}
+	}
+
+	ImGui::Begin(ss.str().c_str());
 
 	ImGui::SetWindowFontScale(windowWidth * 0.0025f);
 
@@ -369,6 +361,7 @@ void DrawImguiWindow(WindowState& windowState, ImVec4 clearColor, ImGuiIO io, in
 				std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
 				ConnectToServer();
+				SendConnectedToRoom();
 				//strncpy_s(chatText, sizeof(chatText), "", sizeof(chatText));
 				windowState = WindowState::Chat;
 
@@ -381,12 +374,28 @@ void DrawImguiWindow(WindowState& windowState, ImVec4 clearColor, ImGuiIO io, in
 	if (windowState == WindowState::Chat)
 	{
 		ImGui::BeginChild("ChatMessages", ImVec2(0, windowHeight - (windowHeight / 4)), true);
-		// Loop through chat messages and display them here
-		for (const std::string& message : chatMessages) {
 
-			//ImGui::TextUnformatted(message.c_str());
+		ImGui::SetScrollY(FLT_MAX);
+
+		if (prevMessagesCount != chatMessages.size())
+		{
+			float totalHeight = ImGui::GetTextLineHeightWithSpacing();
+			for (const std::string& message : chatMessages) {
+				totalHeight += ImGui::GetTextLineHeightWithSpacing(); // Adjust this line height as needed
+			}
+
+			if (totalHeight > (windowHeight - (windowHeight / 4))) {
+				ImGui::SetScrollY(totalHeight - (windowHeight - (windowHeight / 4)));
+			}
+
+			prevMessagesCount = chatMessages.size();
+		}
+
+		for (const std::string& message : chatMessages)
+		{
 			ImGui::TextWrapped(message.c_str());
 		}
+		
 		ImGui::EndChild();
 
 		ImGui::Spacing();
@@ -545,6 +554,40 @@ void HandleSendServer()
 void AddMessageToGui(const std::string& message)
 {
 	chatMessages.push_back(message);
+}
+
+void SendConnectedToRoom()
+{
+	int result;
+
+	//Creating a buffer to send when connected
+	Buffer clientNameBuffer;
+
+	Message clientNameMessage;
+	clientNameMessage.commandType = Message::CommandType::JoinedRoom;
+	clientNameMessage.messageType = Message::Type::String;
+	clientNameMessage.roomID = GetCurrentRoomID();
+	clientNameMessage.SetMessageDataString(clientName);
+	//std::string str = "Surya";
+	//clientNameMessage.SetMessageDataString(str);
+	//clientNameMessage.messageData = (uint32*)50;
+
+	clientNameBuffer.WriteMessage(clientNameMessage);
+
+	//Sending client name when connected
+	result = send(serverSocket, clientNameBuffer.GetBufferData(), clientNameBuffer.GetBufferSize(), 0);
+	if (result == SOCKET_ERROR)
+	{
+		AddMessageToGui("Sending Name to Server failed with error : " + WSAGetLastError());
+		//std::cout << "Sending Name to Server failed with error : " << WSAGetLastError() << std::endl;
+		cleanupEvents.Invoke();
+	}
+
+	//std::string newStr((char*)clientNameMessage1.messageData);
+	//std::cout << "Client name sent to Server Successfully : " << clientNameMessage1.GetMessageDataString() << std::endl;
+	AddMessageToGui("Connected to the [" + GetCurrentRoomID() + "] room");
+	//std::cout << "Client name sent to Server Successfully" << std::endl << std::endl;
+	//std::cout << "Message sent to Server Successfully : " << (uint32)clientNameMessage1.messageData << std::endl;
 }
 
 void FreeAddressInfo()

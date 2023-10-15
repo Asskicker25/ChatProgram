@@ -38,6 +38,7 @@ void GetKeyboardCallback(GLFWwindow* window, int key, int scancode, int action, 
 
 int screenWidth{ 800 };
 int screenHeight{ 600 };
+int prevMessagesCount = 0;
 
 
 
@@ -289,12 +290,30 @@ void DrawImguiWindow(bool window, ImVec4 clearColor, ImGuiIO io, int windowWidth
 
 	ImGui::SetWindowFontScale(windowWidth * 0.0025f);
 
+
 	ImGui::BeginChild("ChatMessages", ImVec2(0, windowHeight - (windowHeight/5)), true);
-	// Loop through chat messages and display them here
-	for (const std::string& message : chatMessages) {
-		//ImGui::TextUnformatted(message.c_str());
+
+
+	if (prevMessagesCount != chatMessages.size())
+	{
+		float totalHeight = ImGui::GetTextLineHeightWithSpacing();
+		for (const std::string& message : chatMessages) {
+			totalHeight += ImGui::GetTextLineHeightWithSpacing(); // Adjust this line height as needed
+		}
+
+		if (totalHeight > (windowHeight - (windowHeight / 4))) {
+			ImGui::SetScrollY(totalHeight - (windowHeight - (windowHeight / 4)));
+		}
+
+		prevMessagesCount = chatMessages.size();
+	}
+
+	for (const std::string& message : chatMessages) 
+	{
 		ImGui::TextWrapped(message.c_str());
 	}
+
+
 	ImGui::EndChild();
 
 
@@ -305,7 +324,6 @@ void DrawImguiWindow(bool window, ImVec4 clearColor, ImGuiIO io, int windowWidth
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
 	ImGui::End();
 }
-
 
 void AddMessageToQueue(const ServerMessage& serverMessage)
 {
@@ -380,7 +398,7 @@ void HandleRecvClient(Client* client)
 			Message message = clientBuffer.ReadMessage();
 			ServerMessage serverMessage;
 
-			if (message.commandType == Message::CommandType::SetName)
+			if (message.commandType == Message::CommandType::JoinedRoom)
 			{
 				client->clientName = message.GetMessageDataString();
 
@@ -392,7 +410,7 @@ void HandleRecvClient(Client* client)
 				sendMessage.commandType = Message::CommandType::Chat;
 				sendMessage.messageType = Message::Type::String;
 				sendMessage.SetRoomId(message.GetRoomId());
-				std::string newStr(client->clientName + " has connect to the room");
+				std::string newStr(client->clientName + " has connect to the " + "[" + message.roomID + "]" +" room");
 
 				sendMessage.SetMessageDataString(newStr);
 
@@ -404,7 +422,7 @@ void HandleRecvClient(Client* client)
 				AddMessageToQueue(serverMessage);
 
 				//std::string addString(client->clientName);
-				AddMessageToGui(client->clientName + " has connected to the room");
+				AddMessageToGui(newStr);
 				std::this_thread::sleep_for(std::chrono::milliseconds(500));
 				//printf("%s has connected to the room\n", client->clientName.c_str());
 			}
@@ -412,6 +430,8 @@ void HandleRecvClient(Client* client)
 			{
 				std::string newStr("[" + message.GetRoomId() + "]" + "[" + client->clientName + "] : " +
 									message.GetMessageDataString());
+
+				client->AddRoomId(message.GetRoomId());
 
 				Message sendMessage;
 
@@ -492,6 +512,7 @@ void GetKeyboardCallback(GLFWwindow* window, int key, int scancode, int action, 
 		}
 	}
 }
+
 void FreeAddressInfo()
 {
 	freeaddrinfo(info);
