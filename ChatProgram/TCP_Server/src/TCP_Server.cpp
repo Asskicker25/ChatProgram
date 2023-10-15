@@ -245,8 +245,8 @@ int main(void)
 		glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
 		glViewport(0, 0, screenWidth, screenHeight);
 
-		int imguiWindowWidth = screenWidth / 2;
-		int imguiWindowHeight = screenHeight / 2;
+		int imguiWindowWidth = screenWidth / 1.25f;
+		int imguiWindowHeight = screenHeight / 1.25f;
 
 		DrawImguiWindow(show_another_window, clear_color, io, imguiWindowWidth, imguiWindowHeight);
 

@@ -85,6 +85,7 @@ void ConnectToServer();
 void HandleRecvServer();
 void HandleSendServer();
 void AddRoomId(std::string newRoomID);
+void ChangeToNextRoomId();
 void AddMessageToGui(const std::string& message);
 void AddMessageToQueue(const ClientMessage& clientMessage);
 void AddChatToQueue(std::string message, std::string roomId);
@@ -164,8 +165,8 @@ int main(void)
 		glfwGetFramebufferSize(window, &screenWidth, &screenHeight);
 		glViewport(0, 0, screenWidth, screenHeight);
 
-		int imguiWindowWidth = screenWidth / 2;
-		int imguiWindowHeight = screenHeight / 2;
+		int imguiWindowWidth = screenWidth / 1.25f;
+		int imguiWindowHeight = screenHeight / 1.25f;
 
 		DrawImguiWindow(windowState, clear_color, io, imguiWindowWidth, imguiWindowHeight);
 
@@ -196,6 +197,8 @@ int main(void)
 
 void ConnectToServer()
 {
+	if (serverConnected) return;
+
 	WSAData wsaData;
 	int result, error;
 
@@ -313,7 +316,8 @@ void DrawImguiWindow(WindowState& windowState, ImVec4 clearColor, ImGuiIO io, in
 	ImGui::SetNextWindowSize(ImVec2(windowWidth, windowHeight));
 	ImGui::SetNextWindowPos(ImVec2((screenWidth / 2) - windowWidth / 2, (screenHeight / 2) - windowHeight / 2));
 
-	ImGui::Begin("TCP Client");
+	std::string windowHeader("TCP Client : " + clientName);
+	ImGui::Begin(windowHeader.c_str());
 
 	ImGui::SetWindowFontScale(windowWidth * 0.0025f);
 
@@ -388,10 +392,28 @@ void DrawImguiWindow(WindowState& windowState, ImVec4 clearColor, ImGuiIO io, in
 		ImGui::Spacing();
 		ImGui::Dummy(ImVec2(0.0f, spacingUnit * 1));
 
-		ImGui::Text("RoomID : ");
+		if (ImGui::Button(GetCurrentRoomID().c_str(), ImVec2(windowWidthCell * 0.75f,0.0f )))
+		{
+			ChangeToNextRoomId();
+		}
+
+		ImGui::SameLine();
+		ImGui::Spacing();
+		ImGui::SameLine();
+		ImGui::Dummy(ImVec2(spacingUnit * 3, 0.0f));
+		ImGui::SameLine();
+
+		if (ImGui::Button("Join Room", ImVec2(0, 0)))
+		{
+			windowState = WindowState::EnterRoomID;
+			ImGui::End();
+			return;
+		}
+		/*ImGui::Text("RoomID : ");
 		ImGui::SameLine();
 		ImGui::SetNextItemWidth(windowWidthCell * 1.5);
-		ImGui::InputText("##Room", roomText, IM_ARRAYSIZE(roomText));
+		ImGui::InputText("##Room", roomText, IM_ARRAYSIZE(roomText));*/
+
 		if (!RoomIdExists(roomText))
 		{
 			ImGui::SameLine();
@@ -412,7 +434,7 @@ void DrawImguiWindow(WindowState& windowState, ImVec4 clearColor, ImGuiIO io, in
 				if (RoomIdExists(roomText))
 				{
 					std::string newStr(chatText);
-					AddChatToQueue(newStr, roomText);
+					AddChatToQueue(newStr, GetCurrentRoomID());
 					strncpy_s(chatText, sizeof(chatText), "", sizeof(chatText));
 				}
 				
@@ -540,6 +562,7 @@ void AddRoomId(std::string newRoomID)
 	if (!RoomIdExists(newRoomID))
 	{
 		roomID.push_back(newRoomID);
+		ChangeToNextRoomId();
 	}
 }
 
@@ -580,6 +603,16 @@ void AddChatToQueue(std::string chatText, std::string roomId)
 	AddMessageToQueue(clientMessage);
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(300));
+}
+
+void ChangeToNextRoomId()
+{
+	currentRoomIndex++;
+
+	if (currentRoomIndex >= roomID.size())
+	{
+		currentRoomIndex = 0;
+	}
 }
 
 std::string GetCurrentRoomID()
