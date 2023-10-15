@@ -2,7 +2,7 @@
 
 Buffer::Buffer(size_t size)
 {
-	bufferData.resize(size, 0);
+	bufferData.resize(size, -1);
 }
 
 Buffer::~Buffer()
@@ -115,7 +115,7 @@ Message Buffer::ReadMessage()
 
 	Message message;
 
-	message.SetPacketSize(ReadUInt32BE());											//Read the packet size
+	//essage.SetPacketSize(ReadUInt32BE());											//Read the packet size
 
 	message.messageType = static_cast<Message::Type>(ReadUShort16BE());				//Read the message type
 	message.commandType = static_cast<Message::CommandType>(ReadUShort16BE());		//Read the command type

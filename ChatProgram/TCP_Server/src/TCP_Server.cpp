@@ -116,8 +116,8 @@ int main(void)
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;    
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();
@@ -138,8 +138,9 @@ int main(void)
 
 	if (result != 0)
 	{
-		AddMessageToGui("Winsock initialization failed with error :" + result);
-		//std::cout << "Winsock initialization failed with error : " << result << std::endl;
+		//AddMessageToGui("Winsock initialization failed with error :" + result);
+		std::cout << "Winsock initialization failed with error : " << result << std::endl;
+		system("Pause");
 		return -1;
 	}
 
@@ -154,11 +155,12 @@ int main(void)
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_PASSIVE;
 
-	result = getaddrinfo(NULL, DEFAULT_PORT, &hints, &info);
+	result = getaddrinfo("10.0.0.3", DEFAULT_PORT, &hints, &info);
 	if (result != 0)
 	{
-		AddMessageToGui("Getting Address failed with error : " + result);
-		//std::cout << "Getting Address failed with error : " << result << std::endl;
+		//AddMessageToGui("Getting Address failed with error : " + result);
+		std::cout << "Getting Address failed with error : " << result << std::endl;
+		system("Pause");
 		cleanupEvents.Addfunction("WSACleanup", WSACleanup);
 		cleanupEvents.Invoke();
 		return -1;
@@ -184,8 +186,8 @@ int main(void)
 	result = bind(listenSocket, info->ai_addr, (int)info->ai_addrlen);
 	if (result == SOCKET_ERROR)
 	{
-		AddMessageToGui("Binding socked failed with error : " + WSAGetLastError());
-		//std::cout << "Binding socked failed with error : " << WSAGetLastError() << std::endl;
+		//AddMessageToGui("Binding socked failed with error : " + WSAGetLastError());
+		std::cout << "Binding socked failed with error : " << WSAGetLastError() << std::endl;
 		cleanupEvents.Addfunction("Close Socket", CloseSocket);
 		cleanupEvents.Invoke();
 		return -1;
@@ -286,12 +288,12 @@ void DrawImguiWindow(bool window, ImVec4 clearColor, ImGuiIO io, int windowWidth
 	ImGui::SetNextWindowPos(ImVec2((screenWidth / 2) - windowWidth / 2, (screenHeight / 2) - windowHeight / 2));
 
 
-	ImGui::Begin("TCP Server");                         
+	ImGui::Begin("TCP Server");
 
 	ImGui::SetWindowFontScale(windowWidth * 0.0025f);
 
 
-	ImGui::BeginChild("ChatMessages", ImVec2(0, windowHeight - (windowHeight/5)), true);
+	ImGui::BeginChild("ChatMessages", ImVec2(0, windowHeight - (windowHeight / 5)), true);
 
 
 	if (prevMessagesCount != chatMessages.size())
@@ -308,7 +310,7 @@ void DrawImguiWindow(bool window, ImVec4 clearColor, ImGuiIO io, int windowWidth
 		prevMessagesCount = chatMessages.size();
 	}
 
-	for (const std::string& message : chatMessages) 
+	for (const std::string& message : chatMessages)
 	{
 		ImGui::TextWrapped(message.c_str());
 	}
@@ -364,9 +366,15 @@ void HandleRecvClient(Client* client)
 {
 	int result, error;
 
+
+	//Hello Surya
+	//Hello
+	//Hello Surya
+
 	while (!client->terminateThread)
 	{
-		Buffer clientBuffer(512);
+		//Buffer clientBuffer(512);
+		Buffer clientBuffer(4);
 
 		//recv
 		result = recv(client->clientSocket, clientBuffer.GetBufferData(), clientBuffer.GetBufferSize(), 0);
@@ -395,7 +403,15 @@ void HandleRecvClient(Client* client)
 		}
 		else
 		{
-			Message message = clientBuffer.ReadMessage();
+			uint32 packetSize = clientBuffer.ReadUInt32BE();
+			Buffer messageBuffer(packetSize);
+
+			result = recv(client->clientSocket, messageBuffer.GetBufferData(), messageBuffer.GetBufferSize(), 0);
+
+
+			Message message = messageBuffer.ReadMessage();
+			message.packetSize = packetSize;
+
 			ServerMessage serverMessage;
 
 			if (message.commandType == Message::CommandType::JoinedRoom)
@@ -410,7 +426,7 @@ void HandleRecvClient(Client* client)
 				sendMessage.commandType = Message::CommandType::Chat;
 				sendMessage.messageType = Message::Type::String;
 				sendMessage.SetRoomId(message.GetRoomId());
-				std::string newStr(client->clientName + " has connect to the " + "[" + message.roomID + "]" +" room");
+				std::string newStr(client->clientName + " has connect to the " + "[" + message.roomID + "]" + " room");
 
 				sendMessage.SetMessageDataString(newStr);
 
@@ -429,7 +445,7 @@ void HandleRecvClient(Client* client)
 			else if (message.commandType == Message::CommandType::Chat)
 			{
 				std::string newStr("[" + message.GetRoomId() + "]" + "[" + client->clientName + "] : " +
-									message.GetMessageDataString());
+					message.GetMessageDataString());
 
 				client->AddRoomId(message.GetRoomId());
 

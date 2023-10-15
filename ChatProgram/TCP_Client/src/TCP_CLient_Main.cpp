@@ -223,7 +223,7 @@ void ConnectToServer()
 	hints.ai_flags = AI_PASSIVE;
 
 	//Getting AddressInfo
-	result = getaddrinfo("localHost", DEFAULT_PORT, &hints, &info);
+	result = getaddrinfo("10.0.0.3", DEFAULT_PORT, &hints, &info);
 	if (result != 0)
 	{
 		AddMessageToGui("Getting Address failed with error : " + result);
@@ -462,7 +462,7 @@ void HandleRecvServer()
 	//std::unique_lock<std::mutex> lock(serverMtx);
 	while (serverConnected)
 	{
-		Buffer recvBuffer(512);
+		Buffer recvBuffer(4);
 
 		int result, error;
 
@@ -490,7 +490,12 @@ void HandleRecvServer()
 		}
 		else
 		{
-			Message recvMessage = recvBuffer.ReadMessage();
+			uint32 packetSize = recvBuffer.ReadUInt32BE();
+			Buffer messageBuffer(packetSize);
+
+			result = recv(serverSocket, messageBuffer.GetBufferData(), messageBuffer.GetBufferSize(), 0);
+
+			Message recvMessage = messageBuffer.ReadMessage();
 
 			if (recvMessage.commandType == Message::CommandType::Chat)
 			{
@@ -526,6 +531,10 @@ void HandleSendServer()
 
 			//Sending client name when connected
 			result = send(serverSocket, sendBuffer.GetBufferData(), sendBuffer.GetBufferSize(), 0);
+
+			std::cout << "Result " << result << std::endl;
+			std::cout << "PacketSize " << clientMessage.message.packetSize << std::endl;
+
 			if (result == SOCKET_ERROR)
 			{
 				error = WSAGetLastError();
@@ -641,9 +650,16 @@ void AddChatToQueue(std::string chatText, std::string roomId)
 
 	clientMessage.message = message;
 
-	std::string newStr(clientMessage.message.GetMessageDataString());
+	//std::string newStr(clientMessage.message.GetMessageDataString());
+
+	/*for (int i = 0; i < 50; i++)
+	{
+		AddMessageToQueue(clientMessage);
+		std::this_thread::sleep_for(std::chrono::milliseconds(300));
+	}*/
 
 	AddMessageToQueue(clientMessage);
+
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(300));
 }
