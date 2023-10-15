@@ -15,6 +15,16 @@ void Message::SetMessageDataString(const std::string& value)
 	messageData = (char*)value.c_str();
 }
 
+void Message::SetRoomId(const std::string& roomId)
+{
+	roomID = roomId;
+}
+
+void Message::SetPacketSize(size_t size)
+{
+	packetSize = size;
+}
+
 uint32 Message::GetMessageDataUInt()
 {
 	return (uint32)messageData;
@@ -29,6 +39,16 @@ std::string Message::GetMessageDataString()
 {
 	std::string newStr((char*)messageData);
 	return newStr;
+}
+
+std::string Message::GetRoomId()
+{
+	return roomID;
+}
+
+size_t Message::GetPacketSize()
+{
+	return packetSize;
 }
 
 size_t Message::GetSize()

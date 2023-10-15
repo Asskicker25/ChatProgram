@@ -26,10 +26,11 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
+#include "Client.h"
+
 #pragma comment(lib, "Ws2_32.lib")
 
 #define DEFAULT_PORT "8017"
-
 
 
 void DrawImguiWindow(bool window, ImVec4 clearColor, ImGuiIO io, int windowWidth, int windowHeight);
@@ -38,14 +39,9 @@ void GetKeyboardCallback(GLFWwindow* window, int key, int scancode, int action, 
 int screenWidth{ 800 };
 int screenHeight{ 600 };
 
-struct Client
-{
-	std::string clientName;
-	SOCKET clientSocket;
-	bool terminateThread;
-};
 
-struct ClientMessage
+
+struct ServerMessage
 {
 	Client* client;
 	Message message;
@@ -62,7 +58,8 @@ std::condition_variable condition;
 
 std::vector<Client*> clientList;
 std::vector <std::thread> clientThreads;
-std::queue<ClientMessage> clientMessages;
+//std::vector<std::string> roomIds;
+std::queue<ServerMessage> serverMessages;
 //std::vector<ClientMessage> clientJoinedMessages; 
 
 std::vector<std::string> chatMessages;
@@ -80,7 +77,9 @@ void CloseSocket();
 void AddNewClient();
 void HandleRecvClient(Client* client);
 void HandleSendClient();
-void AddMessageToQueue(const ClientMessage& clientMessage);
+//void AddRoomID(std::string roomId);
+//bool RoomIdExists(std::string roomId);
+void AddMessageToQueue(const ServerMessage& serverMessages);
 
 void AddMessageToGui(const std::string& message);
 
@@ -308,10 +307,10 @@ void DrawImguiWindow(bool window, ImVec4 clearColor, ImGuiIO io, int windowWidth
 }
 
 
-void AddMessageToQueue(const ClientMessage& clientMessage)
+void AddMessageToQueue(const ServerMessage& serverMessage)
 {
 	//std::unique_lock<std::mutex> lock(messageQueueMutex);
-	clientMessages.push(clientMessage);
+	serverMessages.push(serverMessage);
 }
 
 void AddNewClient()
@@ -379,27 +378,30 @@ void HandleRecvClient(Client* client)
 		else
 		{
 			Message message = clientBuffer.ReadMessage();
-			ClientMessage clientMessage;
+			ServerMessage serverMessage;
 
 			if (message.commandType == Message::CommandType::SetName)
 			{
 				client->clientName = message.GetMessageDataString();
 
+				//AddRoomID(message.GetRoomId());
+				client->AddRoomId(message.GetRoomId());
+
 				Message sendMessage;
 
 				sendMessage.commandType = Message::CommandType::Chat;
 				sendMessage.messageType = Message::Type::String;
-
+				sendMessage.SetRoomId(message.GetRoomId());
 				std::string newStr(client->clientName + " has connect to the room");
 
 				sendMessage.SetMessageDataString(newStr);
 
 				//std::cout << "Added To Queue : " << sendMessage.GetMessageDataString() << std::endl;
 
-				clientMessage.message = sendMessage;
-				clientMessage.client = client;
+				serverMessage.message = sendMessage;
+				serverMessage.client = client;
 
-				AddMessageToQueue(clientMessage);
+				AddMessageToQueue(serverMessage);
 
 				//std::string addString(client->clientName);
 				AddMessageToGui(client->clientName + " has connected to the room");
@@ -408,20 +410,21 @@ void HandleRecvClient(Client* client)
 			}
 			else if (message.commandType == Message::CommandType::Chat)
 			{
-				std::string newStr("[" + client->clientName + "] : " + message.GetMessageDataString());
-
+				std::string newStr("[" + message.GetRoomId() + "]" + "[" + client->clientName + "] : " +
+									message.GetMessageDataString());
 
 				Message sendMessage;
 
 				sendMessage.commandType = Message::CommandType::Chat;
 				sendMessage.messageType = Message::Type::String;
+				sendMessage.SetRoomId(message.roomID);
 
 				sendMessage.SetMessageDataString(newStr);
 
-				clientMessage.message = sendMessage;
-				clientMessage.client = client;
+				serverMessage.message = sendMessage;
+				serverMessage.client = client;
 
-				AddMessageToQueue(clientMessage);
+				AddMessageToQueue(serverMessage);
 
 				AddMessageToGui(newStr);
 				std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -442,10 +445,10 @@ void HandleSendClient()
 	while (true)
 	{
 		//std::unique_lock<std::mutex> lock(messageQueueMutex);
-		if (!clientMessages.empty())
+		if (!serverMessages.empty())
 		{
-			ClientMessage message = clientMessages.front();
-			clientMessages.pop();
+			ServerMessage message = serverMessages.front();
+			serverMessages.pop();
 
 			Buffer sendBuffer;
 
@@ -455,7 +458,7 @@ void HandleSendClient()
 
 			for (int i = 0; i < clientList.size(); i++)
 			{
-				if (clientList[i]->clientName == message.client->clientName)
+				if (!clientList[i]->IsPresentInRoom(message.message.roomID) || clientList[i]->clientName == message.client->clientName)
 				{
 					continue;
 				}
@@ -499,3 +502,27 @@ void CloseSocket()
 	closesocket(listenSocket);
 }
 
+//void AddRoomID(std::string roomId)
+//{
+//	if (!RoomIdExists(roomId))
+//	{
+//		roomIds.push_back(roomId);
+//	}
+//}
+//
+//bool RoomIdExists(std::string roomId)
+//{
+//	bool roomExists = false;
+//
+//	for (int i = 0; i < roomIds.size(); i++)
+//	{
+//		if (roomIds[i] == roomId)
+//		{
+//			roomExists = true;
+//			return roomExists;
+//		}
+//	}
+//	return false;
+//}
+//
+//

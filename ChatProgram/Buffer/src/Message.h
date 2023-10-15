@@ -17,7 +17,6 @@ public :
 	}
 	~Message()
 	{
-
 	}
 
 	enum Type
@@ -33,17 +32,24 @@ public :
 		SetName
 	};
 	
+	size_t packetSize;
 	CommandType commandType;
 	Type messageType;
+	std::string roomID;
 	void* messageData;
 
 	void SetMessageDataUInt(const uint32& value);
 	void SetMessageDataUShort(const ushort16& value);
 	void SetMessageDataString(const std::string& value);
+	void SetRoomId(const std::string& roomId);
+	void SetPacketSize(size_t size);
 
 	uint32 GetMessageDataUInt();
 	ushort16 GetMessageDataUShort();
 	std::string GetMessageDataString();
+	std::string GetRoomId();
+	size_t GetPacketSize();
+
 
 	size_t GetSize();
 };

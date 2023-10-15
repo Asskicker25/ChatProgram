@@ -35,28 +35,69 @@ size_t Buffer::GetBufferSize()
 	return bufferData.size();
 }
 
+size_t Buffer::HandlePacketSize(Message& message)
+{
+	size_t sizeRequired = sizeof(uint32)									//packet size
+						+ sizeof(uint32)									//Room length
+						+ message.roomID.length()							//Room string length
+						+ sizeof(ushort16) 									//message type size
+						+ sizeof(ushort16);									//command type size
+
+
+	switch (message.messageType)
+	{
+	case Message::Type::Uint:
+
+		sizeRequired += sizeof(uint32);										//Message size
+		break;
+	case Message::Type::Ushort:
+
+		sizeRequired += sizeof(ushort16);									//Message size
+		break;
+	case Message::Type::String:
+
+		sizeRequired += sizeof(uint32)										//Message length
+						+ message.GetMessageDataString().length();			//message string length
+		break;
+	}
+
+	if (sizeRequired > bufferData.size())
+	{
+		GrowSize(sizeRequired);
+	}
+
+	return sizeRequired;
+}
+
 void Buffer::WriteMessage(Message& message)
 {
 	writeIndex = 0;
 
-	WriteUShort16BE((ushort16)message.messageType);
-	WriteUShort16BE((ushort16)message.commandType);
+	message.SetPacketSize(HandlePacketSize(message));						
+
+	WriteUInt32BE(message.packetSize);									//Add packet size 
+
+	WriteUShort16BE((ushort16)message.messageType);						//Add message Type
+	WriteUShort16BE((ushort16)message.commandType);						//Add command Type
+
+	WriteString(message.GetRoomId());									//Add room length and room string
 
 	switch (message.messageType)
 	{
 		case Message::Type::Uint:
-			WriteUInt32BE( ((uint32)message.messageData) );
+
+			WriteUInt32BE( ((uint32)message.messageData) );				//Add message 
 			break;
 		case Message::Type::Ushort:
-			WriteUShort16BE( ((ushort16)message.messageData) );
+
+			WriteUShort16BE( ((ushort16)message.messageData) );			//Add messagae
 			break;
 		case Message::Type::String:
-			/*char* value = (char*) message.messageData;
-			std::string newStr(value);*/
-			WriteString(message.GetMessageDataString());
+			WriteString(message.GetMessageDataString());				//Add message length and message string
 			break;
 	}
 }
+
 
 Message Buffer::ReadMessage()
 {
@@ -64,8 +105,12 @@ Message Buffer::ReadMessage()
 
 	Message message;
 
-	message.messageType = static_cast<Message::Type>(ReadUShort16BE());
-	message.commandType = static_cast<Message::CommandType>(ReadUShort16BE());
+	message.SetPacketSize(ReadUInt32BE());											//Read the packet size
+
+	message.messageType = static_cast<Message::Type>(ReadUShort16BE());				//Read the message type
+	message.commandType = static_cast<Message::CommandType>(ReadUShort16BE());		//Read the command type
+
+	message.roomID = ReadString();													//Read the room string
 
 	switch (message.messageType)
 	{
@@ -79,7 +124,7 @@ Message Buffer::ReadMessage()
 		/*std::string value = ReadString();
 		message.messageData = (char*)value.c_str();*/
 
-		std::string value = ReadString();
+		std::string value = ReadString();											//Read the message string
 		message.messageData = new char[value.length() + 1];
 		strcpy_s(static_cast<char*>(message.messageData), value.length() + 1, value.c_str());
 		break;
@@ -90,11 +135,6 @@ Message Buffer::ReadMessage()
 
 void Buffer::WriteUInt32BE(uint32 value)
 {
-	if (writeIndex + sizeof(uint32) > bufferData.size())
-	{
-		GrowSize(sizeof(uint32));
-	}
-
 	bufferData[writeIndex]		= value >> 24;
 	bufferData[writeIndex + 1]	= value >> 16;
 	bufferData[writeIndex + 2]	= value >> 8;
@@ -119,11 +159,6 @@ uint32 Buffer::ReadUInt32BE()
 
 void Buffer::WriteUShort16BE(ushort16 value)
 {
-	if (writeIndex + sizeof(ushort16) > bufferData.size())
-	{
-		GrowSize(sizeof(ushort16));
-	}
-
 	bufferData[writeIndex]		= value >> 8;
 	bufferData[writeIndex + 1] = value;
 
@@ -144,16 +179,6 @@ ushort16 Buffer::ReadUShort16BE()
 
 void Buffer::WriteString(std::string value)
 {
-	size_t sizeRequired = 2			//message type size
-						+ 2			//command type size
-						+ sizeof(uint32) 
-						+ value.length();
-
-	if (writeIndex + sizeRequired > bufferData.size())
-	{
-		GrowSize(sizeRequired);
-	}
-
 	WriteUInt32BE(static_cast<uint32>(value.length()));
 
 	const char* data = value.c_str();
@@ -176,6 +201,8 @@ std::string Buffer::ReadString()
 	}
 
 	std::string value(bufferData.begin() + readIndex, bufferData.begin() + readIndex + length);
+	
+	readIndex += length;
 
 	return value;
 }

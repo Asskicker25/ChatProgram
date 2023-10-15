@@ -23,6 +23,8 @@ public:
 	Buffer(size_t size = 10);
 	~Buffer();
 
+	size_t HandlePacketSize(Message& message);
+
 	char* GetBufferData();
 
 	void GrowSize(size_t newSize);
