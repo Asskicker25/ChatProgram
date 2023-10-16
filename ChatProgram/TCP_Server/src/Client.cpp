@@ -8,6 +8,15 @@ void Client::AddRoomId(std::string roomId)
 	}
 }
 
+void Client::RemoveId(std::string roomId)
+{
+	if (IsPresentInRoom(roomId))
+	{
+		roomIDs.erase(std::remove(roomIDs.begin(), roomIDs.end(), roomId), roomIDs.end());
+	}
+}
+
+
 bool Client::IsPresentInRoom(std::string roomID)
 {
 	bool presentInRoom = false;

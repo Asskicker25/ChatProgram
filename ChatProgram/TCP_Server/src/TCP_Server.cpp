@@ -442,6 +442,33 @@ void HandleRecvClient(Client* client)
 				std::this_thread::sleep_for(std::chrono::milliseconds(500));
 				//printf("%s has connected to the room\n", client->clientName.c_str());
 			}
+			else if (message.commandType == Message::CommandType::LeftRoom)
+			{
+				client->clientName = message.GetMessageDataString();
+
+				//AddRoomID(message.GetRoomId());
+				client->AddRoomId(message.GetRoomId());
+
+				Message sendMessage;
+
+				sendMessage.commandType = Message::CommandType::Chat;
+				sendMessage.messageType = Message::Type::String;
+				sendMessage.SetRoomId(message.GetRoomId());
+				std::string newStr(client->clientName + " has disconnected from the " + "[" + message.roomID + "]" + " room");
+
+				sendMessage.SetMessageDataString(newStr);
+
+				//std::cout << "Added To Queue : " << sendMessage.GetMessageDataString() << std::endl;
+
+				serverMessage.message = sendMessage;
+				serverMessage.client = client;
+
+				AddMessageToQueue(serverMessage);
+
+				//std::string addString(client->clientName);
+				AddMessageToGui(newStr);
+				std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			}
 			else if (message.commandType == Message::CommandType::Chat)
 			{
 				std::string newStr("[" + message.GetRoomId() + "]" + "[" + client->clientName + "] : " +

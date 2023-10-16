@@ -87,11 +87,12 @@ void ConnectToServer();
 void HandleRecvServer();
 void HandleSendServer();
 void AddRoomId(std::string newRoomID);
-void ChangeToNextRoomId();
+void RemoveRoomId(std::string removeRoomId);
+void ChangeToNextRoomId(bool increase = true);
 void AddMessageToGui(const std::string& message);
 void AddMessageToQueue(const ClientMessage& clientMessage);
 void AddChatToQueue(std::string message, std::string roomId);
-void SendConnectedToRoom();
+void SendConnectedToRoom(bool connected);
 std::string GetCurrentRoomID();
 bool RoomIdExists(std::string roomId);
 
@@ -144,9 +145,7 @@ int main(void)
 	//std::cout << "Enter your name : ";
 	//std::cin >> clientName;
 
-	//std::cout << std::endl;
-	std::cout << "************************************" << std::endl;
-	//std::cout << std::endl;
+
 	AddMessageToGui("\n");
 	AddMessageToGui("************************************");
 	AddMessageToGui("\n");
@@ -361,7 +360,7 @@ void DrawImguiWindow(WindowState& windowState, ImVec4 clearColor, ImGuiIO io, in
 				std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
 				ConnectToServer();
-				SendConnectedToRoom();
+				SendConnectedToRoom(true);
 				//strncpy_s(chatText, sizeof(chatText), "", sizeof(chatText));
 				windowState = WindowState::Chat;
 
@@ -418,12 +417,18 @@ void DrawImguiWindow(WindowState& windowState, ImVec4 clearColor, ImGuiIO io, in
 			ImGui::End();
 			return;
 		}
-		/*ImGui::Text("RoomID : ");
-		ImGui::SameLine();
-		ImGui::SetNextItemWidth(windowWidthCell * 1.5);
-		ImGui::InputText("##Room", roomText, IM_ARRAYSIZE(roomText));*/
 
-		if (!RoomIdExists(roomText))
+		ImGui::SameLine();
+
+		if (ImGui::Button("Leave Room", ImVec2(0, 0)))
+		{
+			SendConnectedToRoom(false);
+			RemoveRoomId(GetCurrentRoomID());
+			ImGui::End();
+			return;
+		}
+
+		if (!RoomIdExists(GetCurrentRoomID()))
 		{
 			ImGui::SameLine();
 			ImGui::Text("Room Id doesn't exist");
@@ -440,7 +445,7 @@ void DrawImguiWindow(WindowState& windowState, ImVec4 clearColor, ImGuiIO io, in
 		{
 			if (chatText[0] != '\0')
 			{
-				if (RoomIdExists(roomText))
+				if (RoomIdExists(GetCurrentRoomID()))
 				{
 					std::string newStr(chatText);
 					AddChatToQueue(newStr, GetCurrentRoomID());
@@ -565,7 +570,7 @@ void AddMessageToGui(const std::string& message)
 	chatMessages.push_back(message);
 }
 
-void SendConnectedToRoom()
+void SendConnectedToRoom(bool connected)
 {
 	int result;
 
@@ -573,7 +578,7 @@ void SendConnectedToRoom()
 	Buffer clientNameBuffer;
 
 	Message clientNameMessage;
-	clientNameMessage.commandType = Message::CommandType::JoinedRoom;
+	clientNameMessage.commandType = connected ? Message::CommandType::JoinedRoom : Message::CommandType::LeftRoom;
 	clientNameMessage.messageType = Message::Type::String;
 	clientNameMessage.roomID = GetCurrentRoomID();
 	clientNameMessage.SetMessageDataString(clientName);
@@ -615,6 +620,19 @@ void AddRoomId(std::string newRoomID)
 	{
 		roomID.push_back(newRoomID);
 		ChangeToNextRoomId();
+	}
+}
+
+void RemoveRoomId(std::string remomveRoomId)
+{
+	if (RoomIdExists(remomveRoomId))
+	{
+		roomID.erase(std::remove(roomID.begin(), roomID.end(),remomveRoomId),roomID.end());
+		if (roomID.size() == 0)
+		{
+			windowState = WindowState::EnterRoomID;
+		}
+		ChangeToNextRoomId(false);
 	}
 }
 
@@ -664,9 +682,10 @@ void AddChatToQueue(std::string chatText, std::string roomId)
 	std::this_thread::sleep_for(std::chrono::milliseconds(300));
 }
 
-void ChangeToNextRoomId()
+void ChangeToNextRoomId(bool increase)
 {
-	currentRoomIndex++;
+	if(increase)
+		currentRoomIndex++;
 
 	if (currentRoomIndex >= roomID.size())
 	{

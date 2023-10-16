@@ -14,5 +14,6 @@ struct Client
 	bool terminateThread;
 
 	void AddRoomId(std::string roomId);
+	void RemoveId(std::string roomId);
 	bool IsPresentInRoom(std::string roomID);
 };

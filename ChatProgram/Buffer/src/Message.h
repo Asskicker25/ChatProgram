@@ -29,7 +29,8 @@ public :
 	enum CommandType
 	{
 		Chat,
-		JoinedRoom
+		JoinedRoom,
+		LeftRoom
 	};
 	
 	size_t packetSize;
