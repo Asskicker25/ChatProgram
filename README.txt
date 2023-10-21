@@ -10,5 +10,16 @@ Build and run Instructions
 8. Open the TCP_Client.exe.
 9. You can open as many as clients as you want.
 
+
+User Input Options
+1. Open a TCP_Client after opening the TCP_Server
+2. Enter your name.
+3. Enter the room ID to join
+4. Click on the room ID button to switch between all your connected rooms.
+5. Click on the join room button to join any room simultaneously
+6. Click on the leave room button to leave the current room displayed
+7. Type your message in the chat input field and press send
+
+
 GIT LINK : https://github.com/Asskicker25/ChatProgram.git
 VIDEO DEMO : https://youtu.be/yQQGF68iNog
