@@ -447,7 +447,7 @@ void HandleRecvClient(Client* client)
 				client->clientName = message.GetMessageDataString();
 
 				//AddRoomID(message.GetRoomId());
-				client->AddRoomId(message.GetRoomId());
+				client->RemoveId(message.GetRoomId());
 
 				Message sendMessage;
 
