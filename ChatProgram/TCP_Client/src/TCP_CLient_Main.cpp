@@ -222,7 +222,7 @@ void ConnectToServer()
 	hints.ai_flags = AI_PASSIVE;
 
 	//Getting AddressInfo
-	result = getaddrinfo("10.0.0.3", DEFAULT_PORT, &hints, &info);
+	result = getaddrinfo("127.0.0.1", DEFAULT_PORT, &hints, &info);
 	if (result != 0)
 	{
 		AddMessageToGui("Getting Address failed with error : " + result);
